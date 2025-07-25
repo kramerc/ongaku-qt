@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Build script for VibeQt
+# Build script for Ongaku
 
-echo "Building VibeQt..."
+echo "Building Ongaku..."
 
 # Create build directory if it doesn't exist
 if [ ! -d "build" ]; then
@@ -21,7 +21,7 @@ make -j$(nproc)
 
 if [ $? -eq 0 ]; then
     echo "Build successful!"
-    echo "Run './build/VibeQt' to start the application"
+    echo "Run './build/Ongaku' to start the application"
 else
     echo "Build failed!"
     exit 1

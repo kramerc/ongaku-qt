@@ -5,9 +5,9 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    app.setApplicationName("VibeQt");
+    app.setApplicationName("Ongaku");
     app.setApplicationVersion("1.0.0");
-    app.setOrganizationName("VibeQt");
+    app.setOrganizationName("Ongaku");
 
     MainWindow window;
     window.show();

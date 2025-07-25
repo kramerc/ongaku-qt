@@ -8,6 +8,11 @@
 #include <QTimer>
 #include "databasemanager.h"
 
+// Forward declarations
+namespace TagLib {
+    class FileRef;
+}
+
 class MusicScanner : public QObject
 {
     Q_OBJECT
@@ -52,6 +57,10 @@ private:
     MusicTrack extractMetadata(const QString &filePath);
     bool isFileNewer(const QString &filePath, const QDateTime &dbModified);
     void processBatch();
+
+    // Helper functions for extended metadata extraction
+    QString extractPublisher(const TagLib::FileRef &fileRef);
+    QString extractCatalogNumber(const TagLib::FileRef &fileRef);
 };
 
 #endif // MUSICSCANNER_H

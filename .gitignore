@@ -62,7 +62,6 @@ CMakeLists.txt.user*
 *.out
 *.app
 Ongaku
-VibeQt
 
 # Debug files
 *.dSYM/

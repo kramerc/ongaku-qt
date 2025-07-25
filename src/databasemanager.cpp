@@ -24,7 +24,7 @@ bool DatabaseManager::initialize()
 
     // Setup database connection
     m_database = QSqlDatabase::addDatabase("QSQLITE");
-    m_database.setDatabaseName(dataPath + "/vibeqt.db");
+    m_database.setDatabaseName(dataPath + "/ongaku.db");
 
     if (!m_database.open()) {
         qWarning() << "Failed to open database:" << m_database.lastError().text();
@@ -46,6 +46,8 @@ bool DatabaseManager::createTables()
             artist TEXT,
             album TEXT,
             genre TEXT,
+            publisher TEXT,
+            catalog_number TEXT,
             year INTEGER,
             track_number INTEGER,
             duration INTEGER,
@@ -59,6 +61,16 @@ bool DatabaseManager::createTables()
     if (!query.exec(createTableSQL)) {
         qWarning() << "Failed to create tracks table:" << query.lastError().text();
         return false;
+    }
+
+    // Add migration for new columns if they don't exist
+    QStringList migrationQueries = {
+        "ALTER TABLE tracks ADD COLUMN publisher TEXT",
+        "ALTER TABLE tracks ADD COLUMN catalog_number TEXT"
+    };
+
+    for (const QString &migrationSQL : migrationQueries) {
+        query.exec(migrationSQL); // Ignore errors for existing columns
     }
 
     // Create indexes for better search performance
@@ -83,9 +95,9 @@ bool DatabaseManager::addTrack(const MusicTrack &track)
 {
     QSqlQuery query(m_database);
     query.prepare(R"(
-        INSERT INTO tracks (file_path, title, artist, album, genre, year, track_number,
+        INSERT INTO tracks (file_path, title, artist, album, genre, publisher, catalog_number, year, track_number,
                            duration, file_size, last_modified)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     )");
 
     query.addBindValue(track.filePath);
@@ -93,6 +105,8 @@ bool DatabaseManager::addTrack(const MusicTrack &track)
     query.addBindValue(track.artist);
     query.addBindValue(track.album);
     query.addBindValue(track.genre);
+    query.addBindValue(track.publisher);
+    query.addBindValue(track.catalogNumber);
     query.addBindValue(track.year);
     query.addBindValue(track.track);
     query.addBindValue(track.duration);
@@ -111,7 +125,7 @@ bool DatabaseManager::updateTrack(const MusicTrack &track)
 {
     QSqlQuery query(m_database);
     query.prepare(R"(
-        UPDATE tracks SET title=?, artist=?, album=?, genre=?, year=?, track_number=?,
+        UPDATE tracks SET title=?, artist=?, album=?, genre=?, publisher=?, catalog_number=?, year=?, track_number=?,
                          duration=?, file_size=?, last_modified=?, updated_at=CURRENT_TIMESTAMP
         WHERE file_path=?
     )");
@@ -120,6 +134,8 @@ bool DatabaseManager::updateTrack(const MusicTrack &track)
     query.addBindValue(track.artist);
     query.addBindValue(track.album);
     query.addBindValue(track.genre);
+    query.addBindValue(track.publisher);
+    query.addBindValue(track.catalogNumber);
     query.addBindValue(track.year);
     query.addBindValue(track.track);
     query.addBindValue(track.duration);
@@ -317,6 +333,8 @@ MusicTrack DatabaseManager::trackFromQuery(const QSqlQuery &query)
     track.artist = query.value("artist").toString();
     track.album = query.value("album").toString();
     track.genre = query.value("genre").toString();
+    track.publisher = query.value("publisher").toString();
+    track.catalogNumber = query.value("catalog_number").toString();
     track.year = query.value("year").toInt();
     track.track = query.value("track_number").toInt();
     track.duration = query.value("duration").toInt();

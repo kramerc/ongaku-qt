@@ -129,6 +129,8 @@ void MainWindow::setupUI()
     treeHeader->resizeSection(MusicLibraryModel::ArtistColumn, 200);
     treeHeader->resizeSection(MusicLibraryModel::AlbumColumn, 200);
     treeHeader->resizeSection(MusicLibraryModel::GenreColumn, 120);
+    treeHeader->resizeSection(MusicLibraryModel::PublisherColumn, 150);
+    treeHeader->resizeSection(MusicLibraryModel::CatalogNumberColumn, 100);
     treeHeader->resizeSection(MusicLibraryModel::YearColumn, 60);
     treeHeader->resizeSection(MusicLibraryModel::TrackColumn, 60);
     treeHeader->resizeSection(MusicLibraryModel::DurationColumn, 80);
@@ -152,6 +154,8 @@ void MainWindow::setupUI()
     tableHeader->resizeSection(MusicLibraryFlatModel::ArtistColumn, 200);
     tableHeader->resizeSection(MusicLibraryFlatModel::AlbumColumn, 200);
     tableHeader->resizeSection(MusicLibraryFlatModel::GenreColumn, 120);
+    tableHeader->resizeSection(MusicLibraryFlatModel::PublisherColumn, 150);
+    tableHeader->resizeSection(MusicLibraryFlatModel::CatalogNumberColumn, 100);
     tableHeader->resizeSection(MusicLibraryFlatModel::YearColumn, 60);
     tableHeader->resizeSection(MusicLibraryFlatModel::TrackColumn, 60);
     tableHeader->resizeSection(MusicLibraryFlatModel::DurationColumn, 80);

@@ -64,6 +64,10 @@ QVariant MusicLibraryItem::data(int column) const
                     return m_track.album;
                 case MusicLibraryModel::GenreColumn:
                     return m_track.genre;
+                case MusicLibraryModel::PublisherColumn:
+                    return m_track.publisher;
+                case MusicLibraryModel::CatalogNumberColumn:
+                    return m_track.catalogNumber;
                 case MusicLibraryModel::YearColumn:
                     return m_track.year > 0 ? QString::number(m_track.year) : QString();
                 case MusicLibraryModel::TrackColumn:
@@ -165,6 +169,8 @@ QVariant MusicLibraryModel::headerData(int section, Qt::Orientation orientation,
             case ArtistColumn: return tr("Artist");
             case AlbumColumn: return tr("Album");
             case GenreColumn: return tr("Genre");
+            case PublisherColumn: return tr("Publisher");
+            case CatalogNumberColumn: return tr("Catalog #");
             case YearColumn: return tr("Year");
             case TrackColumn: return tr("Track");
             case DurationColumn: return tr("Duration");

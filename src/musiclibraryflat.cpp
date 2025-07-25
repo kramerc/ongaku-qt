@@ -44,6 +44,10 @@ QVariant MusicLibraryFlatModel::data(const QModelIndex &index, int role) const
                     return track.album;
                 case GenreColumn:
                     return track.genre;
+                case PublisherColumn:
+                    return track.publisher;
+                case CatalogNumberColumn:
+                    return track.catalogNumber;
                 case YearColumn:
                     return track.year > 0 ? QString::number(track.year) : QString();
                 case TrackColumn:
@@ -92,6 +96,10 @@ QVariant MusicLibraryFlatModel::headerData(int section, Qt::Orientation orientat
                     return "Album";
                 case GenreColumn:
                     return "Genre";
+                case PublisherColumn:
+                    return "Publisher";
+                case CatalogNumberColumn:
+                    return "Catalog #";
                 case YearColumn:
                     return "Year";
                 case TrackColumn:
@@ -233,6 +241,14 @@ bool MusicLibraryFlatModel::trackLessThan(const MusicTrack &left, const MusicTra
         case GenreColumn:
             leftValue = left.genre;
             rightValue = right.genre;
+            break;
+        case PublisherColumn:
+            leftValue = left.publisher;
+            rightValue = right.publisher;
+            break;
+        case CatalogNumberColumn:
+            leftValue = left.catalogNumber;
+            rightValue = right.catalogNumber;
             break;
         case YearColumn:
             leftValue = left.year;

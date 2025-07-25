@@ -16,6 +16,8 @@ struct MusicTrack {
     QString artist;
     QString album;
     QString genre;
+    QString publisher;
+    QString catalogNumber;
     int year;
     int track;
     int duration; // in seconds

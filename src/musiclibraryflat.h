@@ -15,6 +15,8 @@ public:
         ArtistColumn,
         AlbumColumn,
         GenreColumn,
+        PublisherColumn,
+        CatalogNumberColumn,
         YearColumn,
         TrackColumn,
         DurationColumn,

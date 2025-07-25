@@ -6,6 +6,17 @@
 #include <taglib/fileref.h>
 #include <taglib/tag.h>
 #include <taglib/audioproperties.h>
+#include <taglib/tpropertymap.h>
+#include <taglib/mpegfile.h>
+#include <taglib/flacfile.h>
+#include <taglib/oggflacfile.h>
+#include <taglib/vorbisfile.h>
+#include <taglib/mp4file.h>
+#include <taglib/id3v2tag.h>
+#include <taglib/id3v2frame.h>
+#include <taglib/textidentificationframe.h>
+#include <taglib/xiphcomment.h>
+#include <taglib/mp4tag.h>
 
 MusicScanner::MusicScanner(DatabaseManager *dbManager, QObject *parent)
     : QObject(parent)
@@ -16,6 +27,7 @@ MusicScanner::MusicScanner(DatabaseManager *dbManager, QObject *parent)
     , m_tracksAdded(0)
     , m_tracksUpdated(0)
     , m_batchSize(10) // Process 10 files per timer tick
+    , m_musicDirectory("/mnt/shucked/Music") // Default music directory
 {
     // Set default supported formats
     m_supportedFormats = {
@@ -236,6 +248,10 @@ MusicTrack MusicScanner::extractMetadata(const QString &filePath)
             track.year = tag->year();
             track.track = tag->track();
 
+            // Extract publisher and catalog number from extended metadata
+            track.publisher = extractPublisher(fileRef);
+            track.catalogNumber = extractCatalogNumber(fileRef);
+
             // Clean up empty strings
             if (track.title.isEmpty()) {
                 QFileInfo fileInfo(filePath);
@@ -276,4 +292,197 @@ bool MusicScanner::isFileNewer(const QString &filePath, const QDateTime &dbModif
 {
     QFileInfo fileInfo(filePath);
     return fileInfo.lastModified() > dbModified;
+}
+
+QString MusicScanner::extractPublisher(const TagLib::FileRef &fileRef)
+{
+    if (fileRef.isNull()) {
+        return QString();
+    }
+
+    QString publisher;
+
+    // Try to get publisher from property map first (most formats)
+    TagLib::PropertyMap properties = fileRef.file()->properties();
+
+    // Common field names for publisher/label
+    QStringList publisherFields = {"PUBLISHER", "LABEL", "ORGANIZATION", "TPUB"};
+    for (const QString &field : publisherFields) {
+        if (properties.contains(field.toStdString())) {
+            TagLib::StringList values = properties[field.toStdString()];
+            if (!values.isEmpty()) {
+                publisher = QString::fromUtf8(values.front().toCString(true));
+                if (!publisher.isEmpty()) {
+                    return publisher;
+                }
+            }
+        }
+    }
+
+    // Format-specific extraction for MP3 files with ID3v2 tags
+    if (TagLib::MPEG::File *mpegFile = dynamic_cast<TagLib::MPEG::File*>(fileRef.file())) {
+        if (mpegFile->ID3v2Tag()) {
+            TagLib::ID3v2::Tag *id3v2 = mpegFile->ID3v2Tag();
+
+            // TPUB frame for publisher
+            TagLib::ID3v2::FrameList tpubFrames = id3v2->frameList("TPUB");
+            if (!tpubFrames.isEmpty()) {
+                if (TagLib::ID3v2::TextIdentificationFrame *frame =
+                    dynamic_cast<TagLib::ID3v2::TextIdentificationFrame*>(tpubFrames.front())) {
+                    if (!frame->fieldList().isEmpty()) {
+                        publisher = QString::fromUtf8(frame->fieldList().front().toCString(true));
+                        if (!publisher.isEmpty()) {
+                            return publisher;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // For FLAC files with Vorbis comments
+    if (TagLib::FLAC::File *flacFile = dynamic_cast<TagLib::FLAC::File*>(fileRef.file())) {
+        if (flacFile->xiphComment()) {
+            TagLib::Ogg::XiphComment *xiph = flacFile->xiphComment();
+
+            QStringList vorbisFields = {"PUBLISHER", "LABEL", "ORGANIZATION"};
+            for (const QString &field : vorbisFields) {
+                TagLib::String fieldName = field.toStdString();
+                if (xiph->contains(fieldName)) {
+                    TagLib::StringList values = xiph->fieldListMap()[fieldName];
+                    if (!values.isEmpty()) {
+                        publisher = QString::fromUtf8(values.front().toCString(true));
+                        if (!publisher.isEmpty()) {
+                            return publisher;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // For MP4/M4A files
+    if (TagLib::MP4::File *mp4File = dynamic_cast<TagLib::MP4::File*>(fileRef.file())) {
+        if (mp4File->tag()) {
+            TagLib::MP4::Tag *mp4Tag = mp4File->tag();
+            TagLib::MP4::ItemListMap itemMap = mp4Tag->itemListMap();
+
+            // Try different MP4 atoms for publisher
+            QStringList mp4Fields = {"©pub", "©lab"};
+            for (const QString &field : mp4Fields) {
+                TagLib::String fieldName = field.toStdString();
+                if (itemMap.contains(fieldName)) {
+                    TagLib::MP4::Item item = itemMap[fieldName];
+                    TagLib::StringList values = item.toStringList();
+                    if (!values.isEmpty()) {
+                        publisher = QString::fromUtf8(values.front().toCString(true));
+                        if (!publisher.isEmpty()) {
+                            return publisher;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return QString(); // Return empty string if not found
+}
+
+QString MusicScanner::extractCatalogNumber(const TagLib::FileRef &fileRef)
+{
+    if (fileRef.isNull()) {
+        return QString();
+    }
+
+    QString catalogNumber;
+
+    // Try to get catalog number from property map first
+    TagLib::PropertyMap properties = fileRef.file()->properties();
+
+    // Common field names for catalog number
+    QStringList catalogFields = {"CATALOGNUMBER", "CATALOG", "CATALOGNO", "RELEASEID", "BARCODE", "UPC"};
+    for (const QString &field : catalogFields) {
+        if (properties.contains(field.toStdString())) {
+            TagLib::StringList values = properties[field.toStdString()];
+            if (!values.isEmpty()) {
+                catalogNumber = QString::fromUtf8(values.front().toCString(true));
+                if (!catalogNumber.isEmpty()) {
+                    return catalogNumber;
+                }
+            }
+        }
+    }
+
+    // Format-specific extraction for MP3 files with ID3v2 tags
+    if (TagLib::MPEG::File *mpegFile = dynamic_cast<TagLib::MPEG::File*>(fileRef.file())) {
+        if (mpegFile->ID3v2Tag()) {
+            TagLib::ID3v2::Tag *id3v2 = mpegFile->ID3v2Tag();
+
+            // Look for TXXX frames with catalog number descriptions
+            TagLib::ID3v2::FrameList frameList = id3v2->frameList("TXXX");
+            for (TagLib::ID3v2::FrameList::Iterator it = frameList.begin(); it != frameList.end(); ++it) {
+                if (TagLib::ID3v2::UserTextIdentificationFrame *frame =
+                    dynamic_cast<TagLib::ID3v2::UserTextIdentificationFrame*>(*it)) {
+                    QString description = QString::fromUtf8(frame->description().toCString(true)).toLower();
+                    if (description.contains("catalog") || description.contains("barcode") ||
+                        description.contains("upc") || description.contains("release")) {
+                        TagLib::StringList values = frame->fieldList();
+                        if (values.size() > 1) { // First is description, second is value
+                            catalogNumber = QString::fromUtf8(values[1].toCString(true));
+                            if (!catalogNumber.isEmpty()) {
+                                return catalogNumber;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // For FLAC files with Vorbis comments
+    if (TagLib::FLAC::File *flacFile = dynamic_cast<TagLib::FLAC::File*>(fileRef.file())) {
+        if (flacFile->xiphComment()) {
+            TagLib::Ogg::XiphComment *xiph = flacFile->xiphComment();
+
+            QStringList vorbisFields = {"CATALOGNUMBER", "CATALOG", "CATALOGNO", "RELEASEID", "BARCODE", "UPC"};
+            for (const QString &field : vorbisFields) {
+                TagLib::String fieldName = field.toStdString();
+                if (xiph->contains(fieldName)) {
+                    TagLib::StringList values = xiph->fieldListMap()[fieldName];
+                    if (!values.isEmpty()) {
+                        catalogNumber = QString::fromUtf8(values.front().toCString(true));
+                        if (!catalogNumber.isEmpty()) {
+                            return catalogNumber;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // For MP4/M4A files
+    if (TagLib::MP4::File *mp4File = dynamic_cast<TagLib::MP4::File*>(fileRef.file())) {
+        if (mp4File->tag()) {
+            TagLib::MP4::Tag *mp4Tag = mp4File->tag();
+            TagLib::MP4::ItemListMap itemMap = mp4Tag->itemListMap();
+
+            // Try different MP4 atoms for catalog number
+            QStringList mp4Fields = {"catg", "barcode", "upc"};
+            for (const QString &field : mp4Fields) {
+                TagLib::String fieldName = field.toStdString();
+                if (itemMap.contains(fieldName)) {
+                    TagLib::MP4::Item item = itemMap[fieldName];
+                    TagLib::StringList values = item.toStringList();
+                    if (!values.isEmpty()) {
+                        catalogNumber = QString::fromUtf8(values.front().toCString(true));
+                        if (!catalogNumber.isEmpty()) {
+                            return catalogNumber;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return QString(); // Return empty string if not found
 }
